@@ -1,0 +1,430 @@
+:root {
+  --color-correct: #74bc0c;
+  --color-incorrect: #f8043c;
+  --color-primary: #d8d8d8;
+  --color-purple: #9c6fd4;
+  --color-blue: #606cc4;
+  --color-radical: #00a3f5;
+  --color-kanji: #fc5494;
+  --color-vocab: #600090;
+}
+
+.hidden {
+  display: none;
+}
+
+body {
+  font-family: Arial, sans-serif, Meiryo;
+  margin: 20px;
+  padding: 0;
+  background-color: #121212; 
+  color: #d8d8d8;
+  text-align: center;
+  position: relative;
+}
+
+button {
+  background-color: var(--color-purple);
+  color: #d8d8d8;
+  padding: 8px 20px;
+  margin: 10px;
+  font-size: 24px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #614683;
+  color: #797777;
+}
+
+
+
+/* ============================
+ DROPDOWN PARAMS
+============================ */
+.dropdown {
+  position: relative;
+  display: inline-block;
+  margin-left: 50%;
+}
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: var(--color-purple);
+  min-width: 220px;
+
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  padding: 12px;
+  z-index: 1;
+  flex-direction: column;
+  text-align: left;
+  border-radius: 10%;
+}
+.dropdown:hover .dropdown-content {
+  display: flex;
+}
+.dropdown-content input[type="number"] {
+  width: 80%;
+  margin-bottom: 5px;
+}
+
+
+/* ============================
+ Rectangle Styles
+============================ */
+#left-rectangle, #right-rectangle {
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: 33%;
+  transform: translateY(-50%);
+  width: 80px;
+  height: 45vh;
+  background-color: var(--color-correct);
+  color: #fff;
+  align-items: center;
+  justify-content: center;
+  writing-mode: vertical-lr;
+  font-size: 24px;
+  letter-spacing: 15px;
+}
+#left-rectangle {
+  left: 10%;
+  text-align: center;
+} 
+#right-rectangle {
+  right: 10%;
+}
+
+
+/* ============================
+ HIEROGLYPH STYLES
+============================ */
+.radical {
+  background-color: var(--color-radical);
+  width: 350px;
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 6em;
+  margin: auto;
+  border-radius: 15%;
+}
+.kanji {
+  background-color: var(--color-kanji);
+  width: 350px;
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 6em;
+  margin: auto;
+  border-radius: 15%;
+}
+.vocab {
+  background-color: var(--color-vocab);
+  width: 350px;
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 6em;
+  margin: auto;
+  border-radius: 15%;
+}
+
+
+/* ============================
+  QUESTION STYLES
+============================ */
+#question-text {
+  font-size: 25px;
+  margin-top: 30px;
+}
+
+/* ============================
+  INPUT FIELD STYLES
+============================ */
+#question-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+#answer-input {
+  margin-top: 20px;
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #d8d8d8;
+  caret-color: #d8d8d8;
+  text-align: center;
+  font-size: 50px;
+  border-bottom: 2px solid #d8d8d8;
+}
+#submit-info-review-container {
+  margin-top: 20px;
+}
+#show-info-page {
+  padding: 8px 40px; 
+}
+
+
+
+/* ============================
+  REVIEW STYLES
+============================ */
+#review-history{
+  font-size: 35px;
+  color: var(--color-purple);
+}
+
+#review-list {
+  list-style: none;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid var(--color-purple);
+  max-width: 300px;
+  position: flex;
+  margin: auto;
+}
+
+/* Each li acts like a table for alignment */
+#review-list li {
+  display: table;
+  margin: 0 auto; /* Center the table in the page, optional */
+  table-layout: fixed;
+  width: 300px; /* Adjust width as needed */
+}
+/* Symbol in the first cell (right-aligned) */
+#review-list li .symbol {
+  display: table-cell;
+  text-align: right;
+  padding-right: 10px;
+}
+
+/* The divider is in its own cell (centered) */
+#review-list li .divider {
+  display: table-cell;
+  text-align: center;
+  width: 2em; /* enough space for “--” */
+}
+/* The user’s answer in the last cell (left-aligned) */
+#review-list li .answer {
+  display: table-cell;
+  text-align: left;
+  padding-left: 10px;
+}
+
+
+/* ============================
+  SEARCH INFO
+============================ */
+#search-query {
+  margin-top: 20px;
+  margin-bottom: 20px;
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #d8d8d8;
+  caret-color: #d8d8d8;
+  text-align: center;
+  font-size: 50px;
+  border-bottom: 2px solid var(--color-purple);
+}
+#search-results {
+  list-style: none;
+  padding-left: 10px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;  
+  width: 250px;
+  border-radius: 10px;
+}
+
+/* ============================
+  SYMBOL-INFO
+============================ */
+
+#symbol-details-container {
+  max-width: 1000px;
+  margin: 20px auto 0 auto;
+  display: flex;
+  flex-direction: row;
+  align-items: left;
+  justify-content: center;
+  margin-top: 20px;   
+  gap: 20px;
+}
+.radical-info {
+  background-color: var(--color-radical);
+  width: 250px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  border-radius: 15%;
+}
+.kanji-info {
+  background-color: var(--color-kanji);
+  width: 250px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  border-radius: 15%;
+}
+.vocab-info {
+  background-color: var(--color-vocab);
+  width: 250px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  border-radius: 15%;
+}
+
+/* ============================
+  DETAILS INFO
+============================ */
+#details {
+  width: 100%;
+  height: 200px;
+  border: 1px solid var(--color-purple);
+  border-radius: 10px;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+}
+#detail-meaning {
+  font-size: 30px;
+  color: var(--color-primary)
+}
+#extra-meanings {
+  font-size: 25px;
+}
+#onkun {
+  margin-top: 15px;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 20px;
+}
+#onon {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+#detail-onyomi-title {
+  color: var(--color-blue)
+}
+#kunkun {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+#detail-kunyomi-title {
+  color: var(--color-blue)
+}
+#detail-level {
+  margin-top: 20px;
+  font-size: 15px;
+  color: var(--color-primary)
+}
+#vocab-sound-button{
+  font-size: 30px;
+  margin-bottom: 0px;
+}
+.faded {
+  opacity: 0.5;
+  color: var(--color-primary);
+}
+
+
+/* ============================
+  MNEMONICS INFO
+============================ */
+#mnemonic-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  margin-top: 20px;
+  position: relative;
+}
+.mnemonic-item {
+  position: relative;
+  margin: 0 10px;
+}
+.mnemonic-item button {
+  padding: 10px 20px;
+  cursor: pointer;
+  border: none;
+  background-color: var(--color-purple);
+  color: #fff;
+  border-radius: 5px;
+}
+.mnemonic-content {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width:50vh;
+  background-color: var(--color-purple);
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  padding: 12px;
+  z-index: 1;
+  flex-direction: column;
+  text-align: left;
+  border-radius: 5px;
+}
+.mnemonic-item:hover .mnemonic-content {
+  display: block;
+}
+
+#detail-sentences {
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  justify-content: center;
+  width: 100%;
+  margin-top: 20px;
+}
+.sentence-item {
+  margin-top: 10px;
+  display: flex;
+  width: 100%;
+}
+.japanese {
+  flex: 1;
+  text-align: right;
+  padding-right: 20px;
+} 
+.translation {
+  flex: 1;
+  text-align: left;
+}
+
+/* ============================
+  Hyperref
+============================ */
+#detail-wanikani-link {
+  display: inline-block;
+  margin-top: 33px;
+  color: var(--color-blue);
+  font-size: 20px;
+  position: relative;
+  border: 2px solid var(--color-blue);
+  border-radius: 10px;
+  padding: 10px 20px; 
+  }
