@@ -238,6 +238,8 @@ class Hieroglyph {
     this.mnemonics = mnemonics;
     this.sentences = sentences || [];
     this.resource_paths = resource_paths;
+    this.weight_meaning = 1.;
+    this.weight_reading = 1.;
   }
   
   static fromJSON(json) {
@@ -273,30 +275,14 @@ let filteredHieroglyphs = []; // Hieroglyphs that match user selection (levels a
 let currentQuestion = null; // The current Hieroglyph being asked about
 let questionType = null; // 'meaning', 'onyomi', 'kunyomi', 'vocab'
 let reviewHistory = []; // Array to store {hieroglyph, userAnswer, correctState} in the order played
+let reviewWeights = []; // Array to store the weights of the hieroglyphs (before and after)
 let maxReviewLength = 300;
 let currentSoundPath = null;
+let soundOn = 1;
 
 //-----------------------------------------------------------
 // UTILITY
 //-----------------------------------------------------------
-function sampleQuestion(filteredHieroglyphs) {
-  currentQuestion = filteredHieroglyphs[Math.floor(Math.random() * filteredHieroglyphs.length)];
-  const random_value = Math.random();
-  
-  const qType = currentQuestion.hieroglyph_type;
-  switch (qType) {
-    case HieroglyphType.RADICAL:
-      questionType = "meaning";
-      break;
-    case HieroglyphType.KANJI:
-      questionType = random_value < 0.33 ? "meaning" : random_value < 0.66 ? "onyomi" : "kunyomi";
-      break;
-    case HieroglyphType.VOCAB:
-      questionType = random_value < 0.5 ? "meaning" : "vocab";
-      break;
-  }
-}
-
 window.addEventListener('DOMContentLoaded', () => {
   const inputField = document.getElementById('answer-input');
   
@@ -308,6 +294,72 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
+
+function sampleQuestion(filteredHieroglyphs) {
+
+  // 0) get all possible types from filteredHieroglyphs
+  const possibleTypes = filteredHieroglyphs.map(h => h.hieroglyph_type);
+
+  // 1) Pick one type uniformly from [RADICAL, KANJI, VOCAB].
+  const randomType = possibleTypes[Math.floor(Math.random() * possibleTypes.length)];
+  
+  // 2) Determine whether the question is about meaning or reading.
+  let questionTypeChoice;
+  if (randomType === HieroglyphType.RADICAL) {
+    questionTypeChoice = "meaning";
+  } else {
+    questionTypeChoice = Math.random() < 0.5 ? "meaning" : "reading";
+  }
+  
+  // 3) If KANJI and "reading" was chosen, choose either "onyomi" or "kunyomi".
+  let readingSubtype = null;
+  if (randomType === HieroglyphType.KANJI && questionTypeChoice === "reading") {
+    readingSubtype = Math.random() < 0.5 ? "onyomi" : "kunyomi";
+  }
+  
+  // Filter hieroglyphs by the chosen type.
+  const itemsOfType = filteredHieroglyphs.filter(h => h.hieroglyph_type === randomType);
+  
+  // 4) Weighted selection among the filtered items based on questionType (meaning or reading).
+  const weightedItems = [];
+  const minWeight = Math.min(...itemsOfType.map(item => questionTypeChoice === "meaning" ? item.weight_meaning : item.weight_reading));
+  for (const item of itemsOfType) {
+    // Default weight is 1 if not specified.
+    let weight = 1.;
+    if (questionTypeChoice === "meaning") {
+      weight = item.weight_meaning || 1.;
+    } else {
+      weight = item.weight_reading || 1.;
+    }
+    weight = (weight/minWeight).toFixed(0);
+
+    // Add the item 'weight' times to the weighted array.
+    for (let i = 0; i < weight; i++) {
+      weightedItems.push(item);
+    }
+  }
+  
+  if (weightedItems.length === 0) {
+    // If no items matched, you might want to handle this case gracefully.
+    currentQuestion = null;
+    questionType = null;
+    return;
+  }
+  
+  const selectedItem = weightedItems[Math.floor(Math.random() * weightedItems.length)];
+  currentQuestion = selectedItem;
+  
+  // Assign the final questionType depending on the type and sub-selection.
+  if (randomType === HieroglyphType.KANJI && questionTypeChoice === "reading") {
+    questionType = readingSubtype; // "onyomi" or "kunyomi"
+  } else if (randomType === HieroglyphType.VOCAB && questionTypeChoice === "reading") {
+    questionType = "vocab";
+  } else {
+    // "meaning" for RADICAL, or "meaning" for KANJI/VOCAB, or "reading" for VOCAB
+    questionType = questionTypeChoice;
+  }
+}
   
 //-----------------------------------------------------------
 // INITIALIZE
@@ -328,6 +380,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("question-params").addEventListener("click", changeParams);
   document.getElementById("submit-answer").addEventListener("click", submitClick);
   document.getElementById("show-info-page").addEventListener("click", showInfoForCurrent);
+  document.getElementById("sound").addEventListener("click", switchSoundOn);
+
   
   // Search system
   document.getElementById("search-button").addEventListener("click", searchHieroglyphs);
@@ -344,6 +398,16 @@ window.addEventListener("DOMContentLoaded", async () => {
   showSection("game-section");
   changeParams();
 });
+
+function switchSoundOn() {
+  soundOn = 1-soundOn;
+  if (soundOn){
+    document.getElementById("sound").textContent = "🔈";
+  }
+  else {
+    document.getElementById("sound").textContent = "🔇";
+  }
+}
 
 function handleUserInteractionKeyDown(event) {
   const is_question = !document.getElementById("game-section").classList.contains("hidden");
@@ -506,17 +570,43 @@ function submitClick() {
   if (possibleAnswers.includes(userAnswerLower)) {
     correct = true;
   }
+
+  // play sound if vocab reading + correct
+  if (questionType === "vocab" && correct && soundOn) {
+    currentSoundPath = 'sounds/'+encodeURIComponent(currentQuestion.resource_paths.sound);
+    playSound(currentSoundPath);
+  }
   
   // FEEDBACK
   displayFeedback(correct, possibleAnswers);
   
   // REVIEW HISTORY
-  let state = correct ? "correct" : "incorrect";
-  reviewHistory.push({
+  let reviewElement = {
     hieroglyph: currentQuestion,
     userAnswer: userAnswer,
-    correctState: state
-  });
+    correctState: correct ? "correct" : "incorrect",
+    weight_meaning: currentQuestion.weight_meaning,
+    weight_reading: currentQuestion.weight_reading,
+    weight_meaning_after: null,
+    weight_reading_after: null
+  }
+
+  // rebalance weights based on correct/incorrect response
+  if (questionType === "meaning") {
+    currentQuestion.weight_meaning /= correct ? 4. : 0.5;
+    currentQuestion.weight_meaning = Math.max(0.125, currentQuestion.weight_meaning);
+    currentQuestion.weight_meaning = Math.min(currentQuestion.weight_meaning, (filteredHieroglyphs.length/5).toFixed(0), 4.);
+  }
+  else {
+    currentQuestion.weight_reading /= correct ? 4. : 0.5;
+    currentQuestion.weight_reading = Math.max(0.125, currentQuestion.weight_reading);
+    currentQuestion.weight_reading = Math.min(currentQuestion.weight_reading, (filteredHieroglyphs.length/5).toFixed(0), 4.);
+  }
+
+  reviewElement.weight_meaning_after = currentQuestion.weight_meaning;
+  reviewElement.weight_reading_after = currentQuestion.weight_reading;
+
+  reviewHistory.push(reviewElement);
   if (reviewHistory.length > maxReviewLength) {
     reviewHistory.shift();
   }
@@ -700,11 +790,20 @@ function showReview() {
   showSection("review-section");
   const reviewList = document.getElementById("review-list");
   reviewList.innerHTML = "";
+
+  li = document.createElement("li");
+  li.innerHTML = `<span class="weights_before">Weights-before</span><span class="symbol">Hieroglyph</span><span class="divider"></span><span class="answer">Answer</span><span class="weights_after">Weights-after</span>`;
+  li.style = "color: var(--color-blue); font-size: 15px; font-weight: bold; margin-top: 10px;";
+  reviewList.appendChild(li);
+  
+  li = document.createElement("li");
+  li.innerHTML = `<hr border="1" width="100%" color="white" size="1">`;
+  reviewList.appendChild(li);
   
   for (let i = reviewHistory.length - 1; i >= 0; i--) {
     const item = reviewHistory[i];
     const li = document.createElement("li");
-    li.innerHTML = `<span class="symbol">${item.hieroglyph.symbol}</span><span class="divider">−−</span><span class="answer">${item.userAnswer}</span>`;
+    li.innerHTML = `<span class="weights_before">(${item.weight_meaning}, ${item.weight_reading})</span><span class="symbol">${item.hieroglyph.symbol}</span><span class="divider">−−</span><span class="answer">${item.userAnswer}</span><span class="weights_after">(${item.weight_meaning_after}, ${item.weight_reading_after})</span>`;
     li.style.color = item.correctState === "correct" ? "var(--color-correct)" : "var(--color-incorrect)";
     reviewList.appendChild(li);
   }

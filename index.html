@@ -16,16 +16,21 @@
       <div class="dropdown">
         <button class="dropbtn">⚙︎</button>
         <div class="dropdown-content">
-          <div>
-            Min Level:<br>
-            <input type="range" id="minInput" min="1" max="60" value="1" step="1" oninput="minOutput.value = (parseFloat(minInput.value).toFixed(0))">
-            <output name="minOutput" id="minOutput">1</output>
+          <div id="lvl-and-sound">
+            <div id="lvls">
+              <div>
+                Min Level:<br>
+                <input type="range" id="minInput" min="1" max="60" value="1" step="1" oninput="minOutput.value = (parseFloat(minInput.value).toFixed(0))">
+                <output name="minOutput" id="minOutput">1</output>
+              </div>
+              <div>
+                Max Level:<br>
+                <input type="range" id="maxInput" min="1" max="60" value="1" step="1" oninput="maxOutput.value = (parseFloat(maxInput.value).toFixed(0))">
+                <output name="maxOutput" id="maxOutput">1</output>
+              </div> 
+            </div>
+            <button id="sound">🔈</button>
           </div>
-          <div>
-            Max Level:<br>
-            <input type="range" id="maxInput" min="1" max="60" value="1" step="1" oninput="maxOutput.value = (parseFloat(maxInput.value).toFixed(0))">
-            <output name="maxOutput" id="maxOutput">1</output>
-          </div> 
           
           <div>
             <label><input type="checkbox" id="type-radical" checked>Radical</label>
