@@ -486,7 +486,7 @@ function showNewQuestion() {
   } else if (questionType === "onyomi") {
     questionText = "ONYOMI READING";
   } else if (questionType === "kunyomi") {
-    questionText = "KUNYOMI READING?";
+    questionText = "KUNYOMI READING";
   } else if (questionType === "vocab") {
     questionText = "READING";
   }
