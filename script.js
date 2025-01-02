@@ -275,6 +275,8 @@ let questionType = null; // 'meaning', 'onyomi', 'kunyomi', 'vocab'
 let reviewHistory = []; // Array to store {hieroglyph, userAnswer, correctState} in the order played
 let maxReviewLength = 300;
 let currentSoundPath = null;
+let minLvl = null;
+let maxLvl = null;
 
 //-----------------------------------------------------------
 // UTILITY
@@ -313,9 +315,6 @@ window.addEventListener('DOMContentLoaded', () => {
 // INITIALIZE
 //-----------------------------------------------------------
 window.addEventListener("DOMContentLoaded", async () => {
-  // Load JSON
-  await loadHieroglyphDB();
-  
   // Attach event listeners
   document.getElementById("question-params").addEventListener("click", changeParams);
   document.getElementById("submit-answer").addEventListener("click", submitClick);
@@ -359,31 +358,42 @@ function handleUserInteractionKeyDown(event) {
 //-----------------------------------------------------------
 // LOAD DATABASE
 //-----------------------------------------------------------
-async function loadHieroglyphDB() {
-  const response = await fetch("./HieroglyphDB.json");
-  const data = await response.json();
-  DB = HieroglyphDB.fromJSON(data);
+async function loadHieroglyphDB(minLvl, maxLvl) {
+  if (typeof minLvl === "undefined" || typeof maxLvl === "undefined") {
+    // No range requested, load the whole database
+    const response = await fetch("./HieroglyphDB.json");
+    const data = await response.json();
+    DB = HieroglyphDB.fromJSON(data);
+  } else {
+    // Load only the necessary chunks for the given level range
+    const chunkSize = 5;
+    // Helper function to find which chunk covers a given level
+    const findChunkIndex = (level) => Math.floor((level - 1) / chunkSize) * chunkSize;
+    
+    const start = findChunkIndex(minLvl);
+    const end   = findChunkIndex(maxLvl);
+    const mergedDB = new HieroglyphDB();
+  
+    for (let i = start; i <= end; i += chunkSize) {
+      const response = await fetch(`./jsons/HieroglyphDB_${i}.json`);
+      const data = await response.json();
+      const partialDB = HieroglyphDB.fromJSON(data);
+      // Merge hieroglyphs
+      mergedDB.hieroglyphs.push(...partialDB.hieroglyphs);
+    }
+
+    //// Filter hieroglyphs to only those within the requested levels
+    // mergedDB.hieroglyphs = mergedDB.hieroglyphs.filter(h => h.level >= minLvl && h.level <= maxLvl);
+    DB = mergedDB;
+  }
 }
   
 //-----------------------------------------------------------
 // HANDLERS
 //-----------------------------------------------------------
-function handleGoGame() {
-  const minLevel = parseInt(document.getElementById("minInput").value, 10);
-  const maxLevel = parseInt(document.getElementById("maxInput").value, 10);
-  
-  // Validate
-  if (isNaN(minLevel) || isNaN(maxLevel) || minLevel < 1 || maxLevel > 60 || minLevel > maxLevel) {
-    alert("Invalid level range. Please adjust.");
-    return;
-  }
-  
-  // Move on to game section
-  showSection("game-section");
-}
   
 // Start or Resume the quiz
-function changeParams() {
+async function changeParams() {
   // gather which type checkboxes are checked
   const rad = document.getElementById("type-radical").checked;
   const kan = document.getElementById("type-kanji").checked;
@@ -397,6 +407,13 @@ function changeParams() {
   // Re-filter the DB according to user selection (levels + types)
   const minLevel = parseInt(document.getElementById("minInput").value, 10);
   const maxLevel = parseInt(document.getElementById("maxInput").value, 10);
+
+  // Check if need to load new DB:
+  if (!minLvl || !maxLvl || minLevel<minLvl || maxLevel>maxLvl) {
+    await loadHieroglyphDB(minLevel, maxLevel);
+  }
+  minLvl = minLevel;
+  maxLvl = maxLevel;
   
   filteredHieroglyphs = DB.hieroglyphs.filter(h => {
     if (h.level < minLevel || h.level > maxLevel) return false;
