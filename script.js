@@ -273,7 +273,7 @@ class HieroglyphDB {
 let DB = null; // Will hold HieroglyphDB
 let filteredHieroglyphs = []; // Hieroglyphs that match user selection (levels and types)
 let currentQuestion = null; // The current Hieroglyph being asked about
-let questionType = null; // 'meaning', 'onyomi', 'kunyomi', 'vocab'
+let questionType = null; // 'meaning', 'reading'
 let reviewHistory = []; // Array to store {hieroglyph, userAnswer, correctState} in the order played
 let reviewWeights = []; // Array to store the weights of the hieroglyphs (before and after)
 let maxReviewLength = 300;
@@ -289,7 +289,7 @@ window.addEventListener('DOMContentLoaded', () => {
   inputField.addEventListener('input', () => {
     const romajiText = inputField.value;
     const japaneseText = romajiToJapanese(romajiText);
-    if (currentQuestion && ["onyomi", "kunyomi", "vocab"].includes(questionType)) {
+    if (currentQuestion && questionType === 'reading') {
       inputField.value = japaneseText;
     }
   });
@@ -305,29 +305,21 @@ function sampleQuestion(filteredHieroglyphs) {
   const randomType = possibleTypes[Math.floor(Math.random() * possibleTypes.length)];
   
   // 2) Determine whether the question is about meaning or reading.
-  let questionTypeChoice;
   if (randomType === HieroglyphType.RADICAL) {
-    questionTypeChoice = "meaning";
+    questionType = "meaning";
   } else {
-    questionTypeChoice = Math.random() < 0.5 ? "meaning" : "reading";
-  }
-  
-  // 3) If KANJI and "reading" was chosen, choose either "onyomi" or "kunyomi".
-  let readingSubtype = null;
-  if (randomType === HieroglyphType.KANJI && questionTypeChoice === "reading") {
-    readingSubtype = Math.random() < 0.5 ? "onyomi" : "kunyomi";
+    questionType = Math.random() < 0.5 ? "meaning" : "reading";
   }
   
   // Filter hieroglyphs by the chosen type.
   const itemsOfType = filteredHieroglyphs.filter(h => h.hieroglyph_type === randomType);
   
-  // 4) Weighted selection among the filtered items based on questionType (meaning or reading).
+  // 3) Weighted selection among the filtered items based on questionType (meaning or reading).
   const weightedItems = [];
-  const minWeight = Math.min(...itemsOfType.map(item => questionTypeChoice === "meaning" ? item.weight_meaning : item.weight_reading));
+  const minWeight = Math.min(...itemsOfType.map(item => questionType === "meaning" ? item.weight_meaning : item.weight_reading));
   for (const item of itemsOfType) {
-    // Default weight is 1 if not specified.
-    let weight = 1.;
-    if (questionTypeChoice === "meaning") {
+    let weight;
+    if (questionType === "meaning") {
       weight = item.weight_meaning || 1.;
     } else {
       weight = item.weight_reading || 1.;
@@ -347,18 +339,8 @@ function sampleQuestion(filteredHieroglyphs) {
     return;
   }
   
-  const selectedItem = weightedItems[Math.floor(Math.random() * weightedItems.length)];
-  currentQuestion = selectedItem;
-  
-  // Assign the final questionType depending on the type and sub-selection.
-  if (randomType === HieroglyphType.KANJI && questionTypeChoice === "reading") {
-    questionType = readingSubtype; // "onyomi" or "kunyomi"
-  } else if (randomType === HieroglyphType.VOCAB && questionTypeChoice === "reading") {
-    questionType = "vocab";
-  } else {
-    // "meaning" for RADICAL, or "meaning" for KANJI/VOCAB, or "reading" for VOCAB
-    questionType = questionTypeChoice;
-  }
+  // Weighted sample
+  currentQuestion = weightedItems[Math.floor(Math.random() * weightedItems.length)];
 }
   
 //-----------------------------------------------------------
@@ -401,12 +383,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
 function switchSoundOn() {
   soundOn = 1-soundOn;
-  if (soundOn){
-    document.getElementById("sound").textContent = "🔈";
-  }
-  else {
-    document.getElementById("sound").textContent = "🔇";
-  }
+  document.getElementById("sound").textContent = soundOn ? "🔈" : "🔇";
 }
 
 function handleUserInteractionKeyDown(event) {
@@ -522,18 +499,7 @@ function showNewQuestion() {
     document.getElementById("right-rectangle").style.display = 'none';
   }  
   // Display question text
-  let questionText = "";
-  if (questionType === "meaning") {
-    questionText = "MEANING";
-  } else if (questionType === "onyomi") {
-    questionText = "ONYOMI READING";
-  } else if (questionType === "kunyomi") {
-    questionText = "KUNYOMI READING";
-  } else if (questionType === "vocab") {
-    questionText = "READING";
-  }
-  
-  document.getElementById("question-text").textContent = questionText;
+  document.getElementById("question-text").textContent = questionType.toUpperCase();
 }
   
 function submitClick() {
@@ -542,26 +508,35 @@ function submitClick() {
     showNewQuestion();
     return;
   }
-  document.getElementById("submit-answer").textContent = "Next";
+
   const userAnswer = document.getElementById("answer-input").value.trim();
   
   let correct = false;
+  let half_correct = false;
   let possibleAnswers = [];
-  
-  switch (questionType) {
-    case "meaning":
-      possibleAnswers = currentQuestion.meanings;
-      break;
-    case "onyomi":
-      possibleAnswers = currentQuestion.readings.onyomi || [];
-      break;
-    case "kunyomi":
-      possibleAnswers = currentQuestion.readings.kunyomi || [];
-      break;
-    case "vocab":
+
+  if (questionType === 'meaning') {
+    possibleAnswers = currentQuestion.meanings;
+  } else {
+    if (currentQuestion.hieroglyph_type === HieroglyphType.KANJI) {
+      if (currentQuestion.readings.main_reading === 'onyomi') {
+        possibleAnswers = currentQuestion.readings.onyomi || [];
+      } else {
+        possibleAnswers = currentQuestion.readings.kunyomi || [];
+      }
+    }
+    else if (currentQuestion.hieroglyph_type === HieroglyphType.VOCAB) {
       possibleAnswers = currentQuestion.readings.vocab || [];
-      break;
+    }
   }
+
+  let softPossibleAnswers = [];
+  softPossibleAnswers = softPossibleAnswers.concat(currentQuestion.meanings);
+  softPossibleAnswers = softPossibleAnswers.concat(currentQuestion.meanings.map(ans => romajiToJapanese(ans)));
+  softPossibleAnswers = softPossibleAnswers.concat(currentQuestion.readings.kunyomi || []);
+  softPossibleAnswers = softPossibleAnswers.concat(currentQuestion.readings.onyomi || []);
+  softPossibleAnswers = softPossibleAnswers.concat(currentQuestion.readings.vocab || []);
+  softPossibleAnswers = softPossibleAnswers.map(ans => ans.toLowerCase());
   
   // Lowercase compare or just unify
   const userAnswerLower = userAnswer.toLowerCase();
@@ -569,16 +544,21 @@ function submitClick() {
   
   if (possibleAnswers.includes(userAnswerLower)) {
     correct = true;
-  }
+  } else if (softPossibleAnswers.includes(userAnswerLower) || softPossibleAnswers.includes(romajiToJapanese(userAnswerLower))) {
+    half_correct = true;
+  }  
 
-  // play sound if vocab reading + correct
-  if (questionType === "vocab" && correct && soundOn) {
+  // FEEDBACK
+  displayFeedback(correct, half_correct, possibleAnswers);
+
+  if (!correct && half_correct) {return;}
+
+
+  // play sound if vocab reading + correct + soundOn
+  if (currentQuestion.hieroglyph_type === HieroglyphType.VOCAB && questionType === 'reading' && correct && soundOn) {
     currentSoundPath = 'sounds/'+encodeURIComponent(currentQuestion.resource_paths.sound);
     playSound(currentSoundPath);
   }
-  
-  // FEEDBACK
-  displayFeedback(correct, possibleAnswers);
   
   // REVIEW HISTORY
   let reviewElement = {
@@ -610,14 +590,29 @@ function submitClick() {
   if (reviewHistory.length > maxReviewLength) {
     reviewHistory.shift();
   }
+
+  document.getElementById("submit-answer").textContent = "Next";
 }
 
-function displayFeedback(is_correct, possibleAnswers) {
-  document.getElementById("answer-input").style.borderBottom = is_correct ? "2px solid var(--color-correct)" : "2px solid var(--color-incorrect)";
+function displayFeedback(is_correct, is_half_correct, possibleAnswers) {
+  
   const feeDBackEl = document.getElementById("feedback");
-  let feeDBackMsg = (is_correct ? "Correct!" : "Incorrect!") + " Possible answers: " + possibleAnswers.join(", ");
-  feeDBackEl.textContent = feeDBackMsg;
+  if (!is_correct && is_half_correct) {
+    if (questionType === 'reading') {
+      let main_reading = currentQuestion.readings.main_reading;
+      main_reading = main_reading ? main_reading[0].toUpperCase() + main_reading.slice(1) + ' r' : 'R';
+      feeDBackEl.textContent = `Almost! ${main_reading}eading expected`;
+    } else {
+      feeDBackEl.textContent = "Almost! Meaning expected";
+    }
+    feeDBackEl.style.color = "var(--color-blue)";
+    return;
+  }
+  
+  feeDBackEl.textContent = (is_correct ? "Correct!" : "Incorrect!") + " Possible answers: " + possibleAnswers.join(", ");
   feeDBackEl.style.color = is_correct ? "var(--color-correct)" : "var(--color-incorrect)";
+
+  document.getElementById("answer-input").style.borderBottom = is_correct ? "2px solid var(--color-correct)" : "2px solid var(--color-incorrect)";
 
   if (window.innerWidth>700) {
     document.getElementById("left-rectangle").style.display  = 'flex';
@@ -628,7 +623,6 @@ function displayFeedback(is_correct, possibleAnswers) {
 
     document.getElementById("left-rectangle").textContent  = is_correct ? '⛩️正しい⛩️' : '🌋正しくない🌋';
     document.getElementById("right-rectangle").textContent = is_correct ? '⛩️正しい⛩️' : '🌋正しくない🌋';
-
   }
   
 }
@@ -718,8 +712,9 @@ function fillHieroglyphDetail(h) {
   else if (h.hieroglyph_type === HieroglyphType.KANJI) {
     document.getElementById("onkun").style.display = 'flex';
 
-    const onyomi_style  = h.readings.onyomi.includes(h.readings.main_reading)  ? h.readings.onyomi.join(", ")  : '<span class="faded">' + h.readings.onyomi.join(", ")  + '</span>';
-    const kunyomi_style = h.readings.kunyomi.includes(h.readings.main_reading) ? h.readings.kunyomi.join(", ") : '<span class="faded">' + h.readings.kunyomi.join(", ") + '</span>';
+    const onyomi_style  = (h.readings.main_reading === 'onyomi') ? h.readings.onyomi.join(", ") : '<span class="faded">' + h.readings.onyomi.join(", ")  + '</span>';
+    const kunyomi_style = (h.readings.main_reading === 'kunyomi') ? h.readings.kunyomi.join(", ") : '<span class="faded">' + h.readings.kunyomi.join(", ")  + '</span>';
+
     document.getElementById("detail-onyomi").innerHTML  = onyomi_style;
     document.getElementById("detail-kunyomi").innerHTML = kunyomi_style;
   }
