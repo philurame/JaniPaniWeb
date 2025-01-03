@@ -539,7 +539,11 @@ function submitClick() {
   softPossibleAnswers = softPossibleAnswers.map(ans => ans.toLowerCase());
   
   // Lowercase compare or just unify
-  const userAnswerLower = userAnswer.toLowerCase();
+  let userAnswerLower = userAnswer.toLowerCase();
+  if (/[^a-zA-Z0-9]/.test(userAnswer) && userAnswer && userAnswerLower[userAnswerLower.length - 1] === 'n') {
+    userAnswerLower = userAnswerLower.slice(0, -1) + 'ん'
+  };
+
   possibleAnswers = possibleAnswers.map(ans => ans.toLowerCase());
   
   if (possibleAnswers.includes(userAnswerLower)) {
